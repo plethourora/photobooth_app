@@ -10,12 +10,12 @@ use Illuminate\Support\Facades\Storage;
 
 class PhotoController extends Controller
 {
-    // show capture page
+    // -------------------
+    // C: Capture & Store
+    // -------------------
     public function create()
     {
-        // only allow logged-in user to save photos
         $userId = session('user_id');
-
         if (!$userId) {
             return redirect('/login')->with('error', 'Silakan login/register dulu untuk mengambil foto.');
         }
@@ -24,7 +24,6 @@ class PhotoController extends Controller
         return view('photos.capture', compact('frames'));
     }
 
-    // store captured photo (expects data URI from frontend)
     public function store(Request $request)
     {
         $userId = session('user_id');
@@ -37,12 +36,12 @@ class PhotoController extends Controller
             'frame_id' => 'nullable|exists:frames,id',
         ]);
 
-        $dataUri = $request->input('image'); // data:image/jpeg;base64,...
+        $dataUri = $request->input('image');
+
         // parse base64
         if (preg_match('/^data:image\/(\w+);base64,/', $dataUri, $type)) {
             $data = substr($dataUri, strpos($dataUri, ',') + 1);
-            $type = strtolower($type[1]); // jpg, png, gif
-
+            $type = strtolower($type[1]);
             if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
                 return redirect()->back()->with('error', 'Format file tidak didukung.');
             }
@@ -54,19 +53,15 @@ class PhotoController extends Controller
             return redirect()->back()->with('error', 'Invalid image data.');
         }
 
-        // buat filenames
         $timestamp = time();
-        $fileName = "photos/{$userId}_{$timestamp}.png"; // kita simpan png final
-        $thumbName = "photos/thumbs/{$userId}_{$timestamp}.jpg";
 
-        // simpan temporary ke storage/app/public/tmp
+        // simpan temporary
         $tmpPath = "tmp/{$userId}_{$timestamp}.{$type}";
         Storage::disk('public')->put($tmpPath, $data);
 
-        // buka image via Intervention
         $image = Image::make(storage_path("app/public/{$tmpPath}"));
 
-        // optionally resize to max (example 1280 width)
+        // resize max width
         $maxWidth = 1280;
         if ($image->width() > $maxWidth) {
             $image->resize($maxWidth, null, function ($constraint) {
@@ -74,29 +69,29 @@ class PhotoController extends Controller
             });
         }
 
-        // apply frame if provided
+        // simpan versi asli tanpa frame
+        $originalPath = "photos/original_{$userId}_{$timestamp}.png";
+        Storage::disk('public')->put($originalPath, (string) $image->encode('png', 90));
+
+        // apply frame jika ada
         if ($request->frame_id) {
             $frame = Frame::find($request->frame_id);
             if ($frame && Storage::disk('public')->exists($frame->image_path)) {
-                $framePath = storage_path('app/public/' . $frame->image_path);
-                $overlay = Image::make($framePath);
-
-                // resize overlay to match photo dimensions (center)
+                $overlay = Image::make(storage_path('app/public/' . $frame->image_path));
                 $overlay->resize($image->width(), $image->height(), function ($constraint) {
                     $constraint->aspectRatio();
                     $constraint->upsize();
                 });
-
-                // insert overlay preserving alpha
                 $image->insert($overlay, 'center');
             }
         }
 
-        // save final image to storage/public/photos
-        $finalPath = $fileName;
-        Storage::disk('public')->put($finalPath, (string) $image->encode('png', 90));
+        // save final image
+        $fileName = "photos/{$userId}_{$timestamp}.png";
+        Storage::disk('public')->put($fileName, (string) $image->encode('png', 90));
 
         // create thumbnail
+        $thumbName = "photos/thumbs/{$userId}_{$timestamp}.jpg";
         $thumbnail = $image->resize(300, null, function ($constraint) {
             $constraint->aspectRatio();
             $constraint->upsize();
@@ -106,15 +101,116 @@ class PhotoController extends Controller
         // cleanup tmp
         Storage::disk('public')->delete($tmpPath);
 
-        // save record to DB
-        $photo = Photo::create([
+        // save DB
+        Photo::create([
             'user_id' => $userId,
-            'filename' => $finalPath,
+            'filename' => $fileName,
             'thumb_path' => $thumbName,
             'frame_id' => $request->frame_id,
-            'original_filename' => null,
+            'original_filename' => $originalPath,
         ]);
 
         return redirect('/photos')->with('success', 'Foto berhasil disimpan!');
     }
+
+    // -------------------
+    // R: Gallery
+    // -------------------
+    public function index()
+    {
+        $userId = session('user_id');
+        if (!$userId) {
+            return redirect('/login')->with('error', 'Silakan login dahulu.');
+        }
+
+        $photos = Photo::where('user_id', $userId)->orderBy('created_at', 'desc')->paginate(12);
+        return view('photos.gallery', compact('photos'));
+    }
+
+    public function show($id)
+    {
+        $photo = Photo::findOrFail($id);
+        return view('photos.show', compact('photo'));
+    }
+
+    // -------------------
+    // U: Edit / Update frame
+    // -------------------
+    public function edit($id)
+    {
+        $photo = Photo::findOrFail($id);
+        $frames = Frame::where('active', true)->get();
+        return view('photos.edit', compact('photo', 'frames'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $photo = Photo::findOrFail($id);
+
+        $request->validate([
+            'frame_id' => 'nullable|exists:frames,id'
+        ]);
+
+        $photo->frame_id = $request->frame_id;
+
+        // mulai dari foto asli
+        $originalPath = storage_path('app/public/' . $photo->original_filename);
+        $image = Image::make($originalPath);
+
+        // apply overlay baru jika ada frame
+        if ($request->frame_id) {
+            $frame = Frame::find($request->frame_id);
+            if ($frame && Storage::disk('public')->exists($frame->image_path)) {
+                $overlay = Image::make(storage_path('app/public/' . $frame->image_path));
+                $overlay->resize($image->width(), $image->height(), function ($constraint) {
+                    $constraint->aspectRatio();
+                    $constraint->upsize();
+                });
+                $image->insert($overlay, 'center');
+            }
+        }
+
+        // simpan ke file utama
+        Storage::disk('public')->put($photo->filename, (string) $image->encode('png', 90));
+
+        // update thumbnail
+        $thumbnail = $image->resize(300, null, function ($constraint) {
+            $constraint->aspectRatio();
+            $constraint->upsize();
+        });
+        Storage::disk('public')->put($photo->thumb_path, (string) $thumbnail->encode('jpg', 85));
+
+        $photo->save();
+
+        return redirect('/photos')->with('success', 'Frame foto berhasil diperbarui!');
+    }
+
+    // -------------------
+    // D: Delete
+    // -------------------
+    public function destroy($id)
+    {
+        $photo = Photo::findOrFail($id);
+
+        // delete main file
+        if ($photo->filename && Storage::disk('public')->exists($photo->filename)) {
+            Storage::disk('public')->delete($photo->filename);
+        }
+
+        // delete thumbnail
+        if ($photo->thumb_path && Storage::disk('public')->exists($photo->thumb_path)) {
+            Storage::disk('public')->delete($photo->thumb_path);
+        }
+
+        // delete original (jika ada)
+        if ($photo->original_filename && Storage::disk('public')->exists($photo->original_filename)) {
+            Storage::disk('public')->delete($photo->original_filename);
+        }
+
+        // hapus data di database
+        $photo->delete();
+
+        return redirect('/photos')->with('success', 'Foto berhasil dihapus!');
+    }
+
 }

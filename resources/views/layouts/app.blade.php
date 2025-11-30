@@ -1,5 +1,21 @@
 <!doctype html>
 <html lang="en">
+    <style>
+    .pagination {
+        margin-top: 10px !important;
+        justify-content: center;
+    }
+
+    .pagination .page-link {
+        padding: 4px 10px !important;
+        font-size: 0.85rem !important;
+    }
+
+    .pagination .page-item {
+        margin: 0 3px;
+    }
+</style>
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">

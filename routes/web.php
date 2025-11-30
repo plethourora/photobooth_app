@@ -30,3 +30,9 @@ Route::get('/photos/{id}', [GalleryController::class, 'show'])->name('photos.sho
 Route::get('/admin', [App\Http\Controllers\AdminFrameController::class, 'index']);
 Route::post('/admin/frames', [App\Http\Controllers\AdminFrameController::class, 'store']);
 Route::delete('/admin/frames/{id}', [App\Http\Controllers\AdminFrameController::class, 'destroy']);
+
+// Edit & Update
+Route::get('/photos/{id}/edit', [PhotoController::class, 'edit'])->name('photos.edit');
+Route::put('/photos/{id}', [PhotoController::class, 'update'])->name('photos.update');
+
+Route::delete('/photos/{id}', [PhotoController::class, 'destroy'])->name('photos.destroy');
