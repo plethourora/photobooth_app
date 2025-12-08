@@ -3,7 +3,14 @@
 @section('content')
 <div class="container py-4">
 
-    <h2 class="mb-3">Admin – Manage Frames</h2>
+    <div class="d-flex justify-content-between mb-3">
+        <h2>Admin – Manage Frames</h2>
+            <a href="{{ route('admin.logout') }}" class="btn btn-outline-danger btn-sm">
+                Logout
+            </a>
+    </div>
+
+
 
     {{-- Success Alert (hanya di sini, tidak di layout) --}}
     @if (session('success'))
