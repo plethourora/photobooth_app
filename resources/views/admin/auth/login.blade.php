@@ -23,6 +23,6 @@
         <button class="btn btn-primary">Login</button>
     </form>
 
-    <p class="mt-3"><a href="/admin/register">Register Admin</a></p>
+    {{-- <p class="mt-3"><a href="/admin/register">Register Admin</a></p> --}}
 </div>
 @endsection

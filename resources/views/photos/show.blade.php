@@ -15,14 +15,14 @@
         <a href="{{ asset('storage/' . $photo->filename) }}" class="btn btn-outline-primary" download>Download</a>
 
         <!-- Edit -->
-        <a href="{{ route('photos.edit', $photo->id) }}" class="btn btn-outline-warning">Edit</a>
+        {{-- <a href="{{ route('photos.edit', $photo->id) }}" class="btn btn-outline-warning">Edit</a> --}}
 
         <!-- Delete -->
-        <form action="{{ route('photos.destroy', $photo->id) }}" method="POST" onsubmit="return confirm('Apakah kamu yakin ingin menghapus foto ini?');">
+        {{-- <form action="{{ route('photos.destroy', $photo->id) }}" method="POST" onsubmit="return confirm('Apakah kamu yakin ingin menghapus foto ini?');">
             @csrf
             @method('DELETE')
             <button type="submit" class="btn btn-outline-danger">Delete</button>
-        </form>
+        </form> --}}
     </div>
   </div>
 </div>
