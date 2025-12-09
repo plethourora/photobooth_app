@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Photobooth</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+
   <style>
     .capture-wrapper { position: relative; width: 100%; max-width: 720px; margin: 0 auto; }
     #camera, #preview { width: 100%; height: auto; display: block; }

@@ -1,0 +1,49 @@
+.btn-capture {
+    background-color: #827081 !important;
+    border-color: #827081 !important;
+    color: #000 !important;
+}
+.btn-capture:hover {
+    background-color: #827081 !important;
+    border-color: #827081 !important;
+}
+
+.btn-retake {
+    background-color: #e7e6f7 !important;
+    border-color: #e7e6f7 !important;
+    color: #4d4d4d !important;
+}
+.btn-retake:hover {
+    background-color: #d6d4ee !important;
+    border-color: #d6d4ee !important;
+}
+
+.btn-save {
+    background-color: #827081 !important;
+    border-color: #827081 !important;
+    color: #fff !important;
+}
+.btn-save:hover {
+    background-color: #6c5b6a !important;
+    border-color: #6c5b6a !important;
+}
+
+.btn-download {
+    background-color: #c6d2ed !important;
+    border-color: #c6d2ed !important;
+    color: #000 !important;
+}
+.btn-download:hover {
+    background-color: #a8bde4 !important;
+    border-color: #a8bde4 !important;
+}
+
+.btn-delete {
+    background-color: #aea3b0 !important;
+    border-color: #aea3b0 !important;
+    color: #fff !important;
+}
+.btn-delete:hover {
+    background-color: #978d9a !important;
+    border-color: #978d9a !important;
+}

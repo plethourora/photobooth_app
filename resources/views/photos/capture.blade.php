@@ -89,9 +89,9 @@
 
         {{-- Buttons --}}
         <div>
-            <button id="btnCapture" class="btn btn-success">Capture</button>
-            <button id="btnRetake" class="btn btn-secondary" style="display:none;">Retake</button>
-            <button id="btnSave" class="btn btn-primary" style="display:none;">Save Photo</button>
+            <button id="btnCapture" class="btn btn-capture">Capture</button>
+            <button id="btnRetake" class="btn btn-retake" style="display:none;">Retake</button>
+            <button id="btnSave" class="btn btn-save" style="display:none;">Save Photo</button>
         </div>
 
         {{-- Hidden form --}}
