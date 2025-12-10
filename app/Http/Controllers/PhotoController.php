@@ -11,14 +11,12 @@ use Illuminate\Support\Facades\Storage;
 class PhotoController extends Controller
 {
     // -------------------
-    // C: Capture & Store
+    // C: Capture Collage 3x
     // -------------------
     public function create()
     {
         $userId = session('user_id');
-        if (!$userId) {
-            return redirect('/login')->with('error', 'Silakan login/register dulu untuk mengambil foto.');
-        }
+        if (!$userId) return redirect('/login')->with('error', 'Silakan login dahulu.');
 
         $frames = Frame::where('active', true)->get();
         return view('photos.capture', compact('frames'));
@@ -27,90 +25,102 @@ class PhotoController extends Controller
     public function store(Request $request)
     {
         $userId = session('user_id');
-        if (!$userId) {
-            return redirect('/login')->with('error', 'Silakan login dahulu.');
-        }
+        if (!$userId) return redirect('/login')->with('error', 'Silakan login dahulu.');
 
         $request->validate([
-            'image' => 'required', // dataURI
-            'frame_id' => 'nullable|exists:frames,id',
+            'image' => 'required|string',
+            'frame_id' => 'nullable|exists:frames,id'
         ]);
 
-        $dataUri = $request->input('image');
+        // $request->image sekarang berisi kolase TANPA FRAME (setelah perbaikan JS)
+        $this->saveImage($request->image, $request->frame_id, $userId, $isCollage = true);
 
-        // parse base64
+        return redirect('/photos')->with('success', 'Collage berhasil disimpan!');
+    }
+
+    // -------------------
+    // Helper: Save Image / Collage
+    // -------------------
+    private function saveImage($dataUri, $frameId, $userId, $isCollage = false)
+    {
+        // Decode base64
         if (preg_match('/^data:image\/(\w+);base64,/', $dataUri, $type)) {
             $data = substr($dataUri, strpos($dataUri, ',') + 1);
             $type = strtolower($type[1]);
-            if (!in_array($type, ['jpg', 'jpeg', 'png', 'gif'])) {
-                return redirect()->back()->with('error', 'Format file tidak didukung.');
-            }
+            if (!in_array($type, ['jpg','jpeg','png'])) throw new \Exception('Format file tidak didukung.');
             $data = base64_decode($data);
-            if ($data === false) {
-                return redirect()->back()->with('error', 'Gagal decode gambar.');
-            }
+            if ($data === false) throw new \Exception('Gagal decode gambar.');
         } else {
-            return redirect()->back()->with('error', 'Invalid image data.');
+            throw new \Exception('Invalid image data.');
         }
 
         $timestamp = time();
-
-        // simpan temporary
         $tmpPath = "tmp/{$userId}_{$timestamp}.{$type}";
         Storage::disk('public')->put($tmpPath, $data);
 
+        // $image di sini adalah foto KOLASE MENTAH (TANPA FRAME)
         $image = Image::make(storage_path("app/public/{$tmpPath}"));
 
-        // resize max width
+        // Resize max width
         $maxWidth = 1280;
         if ($image->width() > $maxWidth) {
-            $image->resize($maxWidth, null, function ($constraint) {
+            $image->resize($maxWidth, null, function($constraint){
                 $constraint->aspectRatio();
+                $constraint->upsize();
             });
         }
 
-        // simpan versi asli tanpa frame
+        // Simpan ORIGINAL IMAGE (SANGAT PENTING: ini harus MENTAH/TANPA FRAME)
         $originalPath = "photos/original_{$userId}_{$timestamp}.png";
-        Storage::disk('public')->put($originalPath, (string) $image->encode('png', 90));
+        Storage::disk('public')->put($originalPath, (string)$image->encode('png',90));
 
-        // apply frame jika ada
-        if ($request->frame_id) {
-            $frame = Frame::find($request->frame_id);
+        // --- Proses Pemberian Frame di Back-End ---
+        $finalImage = clone $image; 
+        
+        if ($frameId) {
+            $frame = Frame::find($frameId);
             if ($frame && Storage::disk('public')->exists($frame->image_path)) {
                 $overlay = Image::make(storage_path('app/public/' . $frame->image_path));
-                $overlay->resize($image->width(), $image->height(), function ($constraint) {
-                    $constraint->aspectRatio();
-                    $constraint->upsize();
-                });
-                $image->insert($overlay, 'center');
+
+                $numSlots = $isCollage ? 3 : 1; 
+                $slotHeight = intval($finalImage->height() / $numSlots);
+
+                for ($i=0; $i<$numSlots; $i++){
+                    $slotOverlay = clone $overlay;
+                    $slotOverlay->resize($finalImage->width(), $slotHeight, function($constraint){
+                        $constraint->aspectRatio();
+                        $constraint->upsize();
+                    });
+                    $finalImage->insert($slotOverlay, 'top-left', 0, $i*$slotHeight);
+                }
             }
         }
 
-        // save final image
-        $fileName = "photos/{$userId}_{$timestamp}.png";
-        Storage::disk('public')->put($fileName, (string) $image->encode('png', 90));
+        // File utama (gambar BERFRAME atau TANPA FRAME jika $frameId null)
+        $suffix = $isCollage ? '_collage' : '';
+        $fileName = "photos/{$userId}_{$timestamp}{$suffix}.png";
+        Storage::disk('public')->put($fileName, (string)$finalImage->encode('png',90));
 
-        // create thumbnail
-        $thumbName = "photos/thumbs/{$userId}_{$timestamp}.jpg";
-        $thumbnail = $image->resize(300, null, function ($constraint) {
+        // Thumbnail
+        $thumbName = "photos/thumbs/{$userId}_{$timestamp}{$suffix}.jpg";
+        $thumbnail = clone $finalImage;
+        $thumbnail->resize(300, null, function($constraint){
             $constraint->aspectRatio();
             $constraint->upsize();
         });
-        Storage::disk('public')->put($thumbName, (string) $thumbnail->encode('jpg', 85));
+        Storage::disk('public')->put($thumbName, (string)$thumbnail->encode('jpg',85));
 
-        // cleanup tmp
+        // Cleanup tmp
         Storage::disk('public')->delete($tmpPath);
 
-        // save DB
+        // DB
         Photo::create([
             'user_id' => $userId,
             'filename' => $fileName,
             'thumb_path' => $thumbName,
-            'frame_id' => $request->frame_id,
+            'frame_id' => $frameId,
             'original_filename' => $originalPath,
         ]);
-
-        return redirect('/photos')->with('success', 'Foto berhasil disimpan!');
     }
 
     // -------------------
@@ -119,11 +129,9 @@ class PhotoController extends Controller
     public function index()
     {
         $userId = session('user_id');
-        if (!$userId) {
-            return redirect('/login')->with('error', 'Silakan login dahulu.');
-        }
+        if (!$userId) return redirect('/login')->with('error','Silakan login dahulu.');
 
-        $photos = Photo::where('user_id', $userId)->orderBy('created_at', 'desc')->paginate(12);
+        $photos = Photo::where('user_id', $userId)->orderBy('created_at','desc')->paginate(12);
         return view('photos.gallery', compact('photos'));
     }
 
@@ -134,55 +142,78 @@ class PhotoController extends Controller
     }
 
     // -------------------
-    // U: Edit / Update frame
+    // U: Edit / Update Frame (Sudah Benar, selalu mulai dari original_filename)
     // -------------------
     public function edit($id)
     {
         $photo = Photo::findOrFail($id);
         $frames = Frame::where('active', true)->get();
-        return view('photos.edit', compact('photo', 'frames'));
+        return view('photos.edit', compact('photo','frames'));
     }
 
     public function update(Request $request, $id)
     {
         $photo = Photo::findOrFail($id);
 
-        $request->validate([
-            'frame_id' => 'nullable|exists:frames,id'
-        ]);
-
-        $photo->frame_id = $request->frame_id;
-
-        // mulai dari foto asli
+        $request->validate(['frame_id'=>'nullable|exists:frames,id']);
+        
+        // 1. Ambil Gambar Asli (Original Image - TANPA FRAME)
         $originalPath = storage_path('app/public/' . $photo->original_filename);
-        $image = Image::make($originalPath);
-
-        // apply overlay baru jika ada frame
-        if ($request->frame_id) {
-            $frame = Frame::find($request->frame_id);
-            if ($frame && Storage::disk('public')->exists($frame->image_path)) {
-                $overlay = Image::make(storage_path('app/public/' . $frame->image_path));
-                $overlay->resize($image->width(), $image->height(), function ($constraint) {
-                    $constraint->aspectRatio();
-                    $constraint->upsize();
-                });
-                $image->insert($overlay, 'center');
-            }
+        if (!file_exists($originalPath)) {
+             return back()->with('error', 'File original tidak ditemukan untuk diedit.');
         }
 
-        // simpan ke file utama
-        Storage::disk('public')->put($photo->filename, (string) $image->encode('png', 90));
+        // Image ini sekarang benar-benar mentah
+        $image = Image::make($originalPath); 
+        $isCollage = true; 
 
-        // update thumbnail
-        $thumbnail = $image->resize(300, null, function ($constraint) {
+        // 2. Aplikasikan Frame Baru (Hanya jika frameId ada)
+        if($request->frame_id){ 
+            $frame = Frame::find($request->frame_id);
+            
+            if($frame && Storage::disk('public')->exists($frame->image_path)){
+                $overlay = Image::make(storage_path('app/public/' . $frame->image_path));
+
+                $numSlots = $isCollage ? 3 : 1;
+                $slotHeight = intval($image->height() / $numSlots);
+
+                for($i=0;$i<$numSlots;$i++){
+                    $slotOverlay = clone $overlay;
+                    $slotOverlay->resize($image->width(), $slotHeight, function($constraint){
+                        $constraint->aspectRatio();
+                        $constraint->upsize();
+                    });
+                    // Gabungkan frame baru ke gambar asli ($image)
+                    $image->insert($slotOverlay,'top-left',0,$i*$slotHeight); 
+                }
+            }
+        } 
+        // JIKA "No Frame", $image tetap mentah.
+
+        // 3. Simpan Hasil dan Buat Record Baru
+        $timestamp = time();
+        $fileName = "photos/{$photo->user_id}_{$timestamp}_edit.png";
+        Storage::disk('public')->put($fileName, (string)$image->encode('png',90));
+
+        // Buat thumbnail
+        $thumbName = "photos/thumbs/{$photo->user_id}_{$timestamp}_edit.jpg";
+        $thumbnail = clone $image;
+        $thumbnail->resize(300, null, function($constraint){
             $constraint->aspectRatio();
             $constraint->upsize();
         });
-        Storage::disk('public')->put($photo->thumb_path, (string) $thumbnail->encode('jpg', 85));
+        Storage::disk('public')->put($thumbName, (string)$thumbnail->encode('jpg',85));
 
-        $photo->save();
+        // DB: Buat record baru
+        Photo::create([
+            'user_id' => $photo->user_id,
+            'filename' => $fileName,
+            'thumb_path' => $thumbName,
+            'frame_id' => $request->frame_id, 
+            'original_filename' => $photo->original_filename 
+        ]);
 
-        return redirect('/photos')->with('success', 'Frame foto berhasil diperbarui!');
+        return redirect('/photos')->with('success','Frame foto berhasil diperbarui!');
     }
 
     // -------------------
@@ -192,25 +223,16 @@ class PhotoController extends Controller
     {
         $photo = Photo::findOrFail($id);
 
-        // delete main file
-        if ($photo->filename && Storage::disk('public')->exists($photo->filename)) {
+        if($photo->filename && Storage::disk('public')->exists($photo->filename)){
             Storage::disk('public')->delete($photo->filename);
         }
-
-        // delete thumbnail
-        if ($photo->thumb_path && Storage::disk('public')->exists($photo->thumb_path)) {
+        if($photo->thumb_path && Storage::disk('public')->exists($photo->thumb_path)){
             Storage::disk('public')->delete($photo->thumb_path);
         }
 
-        // delete original (jika ada)
-        if ($photo->original_filename && Storage::disk('public')->exists($photo->original_filename)) {
-            Storage::disk('public')->delete($photo->original_filename);
-        }
-
-        // hapus data di database
+        // original jangan dihapus
         $photo->delete();
 
-        return redirect('/photos')->with('success', 'Foto berhasil dihapus!');
+        return redirect('/photos')->with('success','Foto berhasil dihapus!');
     }
-
 }

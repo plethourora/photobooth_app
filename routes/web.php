@@ -53,3 +53,5 @@ Route::middleware('admin.auth')->group(function () {
     Route::post('/admin/frames', [AdminFrameController::class, 'store']);
     Route::delete('/admin/frames/{id}', [AdminFrameController::class, 'destroy']);
 });
+
+Route::post('/photos/collage', [PhotoController::class, 'storeCollage'])->name('photos.storeCollage');
