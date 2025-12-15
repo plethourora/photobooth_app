@@ -5,23 +5,20 @@
 
     <div class="d-flex justify-content-between mb-3">
         <h2>Admin – Manage Frames</h2>
-            <a href="{{ route('admin.logout') }}" class="btn btn-outline-danger btn-sm">
-                Logout
-            </a>
+        <a href="{{ route('admin.logout') }}" class="btn btn-outline-danger btn-sm">
+            Logout
+        </a>
     </div>
-
-
 
     {{-- Success Alert (hanya di sini, tidak di layout) --}}
     @if (session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
-    <!-- Upload form -->
     <div class="card mb-4">
         <div class="card-header">Upload Frame Baru</div>
         <div class="card-body">
-            <form action="/admin/frames" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('admin.frames.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="mb-2">
                     <label class="form-label">Nama Frame</label>
@@ -38,7 +35,6 @@
         </div>
     </div>
 
-    <!-- List Frame -->
     <h4 class="mb-3">Daftar Frame</h4>
 
     @if ($frames->count() == 0)
@@ -55,7 +51,11 @@
                     <div class="card-body text-center">
                         <p class="fw-bold mb-2">{{ $frame->name }}</p>
 
-                        <form action="/admin/frames/{{ $frame->id }}" method="POST"
+                        {{-- Tombol Edit Nama Frame (BARU) --}}
+                        <a href="{{ route('admin.frames.edit', $frame->id) }}" class="btn btn-sm btn-info text-white mb-2">Edit Nama</a>
+
+                        {{-- Form Delete (disesuaikan menggunakan route name) --}}
+                        <form action="{{ route('admin.frames.destroy', $frame->id) }}" method="POST"
                               onsubmit="return confirm('Yakin hapus frame ini?')">
                             @csrf
                             @method('DELETE')
