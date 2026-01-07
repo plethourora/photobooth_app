@@ -153,12 +153,13 @@
 <body>
 <nav class="navbar navbar-expand-lg navbar-custom mb-4">
   <div class="container">
-    <a class="navbar-brand" href="/">Poselab</a>
+    <a class="navbar-brand" href="/">Pose<span style="color: #ed1e79;">Lab</span>.</a>
     <div class="collapse navbar-collapse">
       <ul class="navbar-nav me-auto">
-        <li class="nav-item"><a class="nav-link" href="/">Start Photo</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url('/about') }}">About Us</a></li>
         <li class="nav-item"><a class="nav-link" href="{{ url('/capture') }}">Capture</a></li>
         <li class="nav-item"><a class="nav-link" href="{{ url('/photos') }}">Gallery</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url('/contact') }}">Contact</a></li>
       </ul>
       <ul class="navbar-nav">
         @if(session('user_id'))

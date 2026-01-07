@@ -55,3 +55,13 @@ Route::middleware('admin.auth')->group(function () {
 });
 
 Route::post('/photos/collage', [PhotoController::class, 'storeCollage'])->name('photos.storeCollage');
+
+
+// halaman about
+Route::get('/about', function () {
+    return view('about');
+});
+
+Route::get('/contact', function () {
+    return view('contact');
+});
