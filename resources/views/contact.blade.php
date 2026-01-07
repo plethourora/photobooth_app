@@ -9,13 +9,11 @@
         background: linear-gradient(-45deg, #2b1055, #4e2a84, #7597de, #ed1e79);
         background-size: 400% 400%;
         animation: gradientBG 15s ease infinite;
-        
-        /* Full height minus navbar */
         min-height: calc(100vh - 56px);
         width: 100vw;
-        margin-left: calc(-50vw + 50%); /* Trik Full Width */
+        margin-left: calc(-50vw + 50%);
         margin-top: -1.5rem;
-        padding-top: 100px; /* Padding atas besar agar tidak ketutup navbar */
+        padding-top: 100px;
         padding-bottom: 50px;
         font-family: 'Inter', sans-serif;
         color: white;
@@ -38,9 +36,8 @@
         overflow: hidden;
     }
 
-    /* 3. TYPOGRAPHY */
     .section-title {
-        color: #4ade80; /* Hijau Tosca */
+        color: #4ade80;
         font-weight: 800;
         font-size: 2.5rem;
         margin-bottom: 10px;
@@ -53,7 +50,6 @@
         margin-bottom: 30px;
     }
 
-    /* 4. CONTACT INFO ITEM */
     .contact-item {
         display: flex;
         align-items: flex-start;
@@ -84,7 +80,6 @@
         box-shadow: 0 5px 15px rgba(74, 222, 128, 0.3);
     }
 
-    /* 5. FORM STYLES */
     .form-control-custom {
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -101,10 +96,6 @@
         border-color: #4ade80;
         box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
         outline: none;
-    }
-
-    .form-control-custom::placeholder {
-        color: rgba(255, 255, 255, 0.5);
     }
 
     .btn-send {
@@ -125,16 +116,19 @@
         box-shadow: 0 5px 20px rgba(244, 114, 182, 0.5);
         color: white;
     }
+
+    /* Tambahan animasi fade untuk notifikasi */
+    .fade-out {
+        transition: opacity 0.5s ease-out;
+    }
 </style>
 
 <div class="contact-wrapper">
     <div class="container">
-        
         <div class="row justify-content-center">
             <div class="col-lg-10">
                 <div class="glass-card">
                     <div class="row">
-                        
                         <div class="col-md-5 mb-5 mb-md-0">
                             <h2 class="section-title">Get in Touch</h2>
                             <p class="section-subtitle">Punya pertanyaan atau ingin kerjasama? Hubungi kami langsung!</p>
@@ -167,20 +161,38 @@
                         <div class="col-md-7">
                             <div class="p-4" style="background: rgba(0,0,0,0.2); border-radius: 15px;">
                                 <h4 class="fw-bold mb-4">Send a Message 🚀</h4>
+
+                                @if(session('success'))
+                                    <div id="alert-notif" class="fade-out" style="background: rgba(74, 222, 128, 0.15); border: 1px solid #4ade80; border-radius: 12px; color: #4ade80; padding: 15px; margin-bottom: 25px; backdrop-filter: blur(10px); display: flex; align-items: center;">
+                                        <span style="font-size: 1.2rem; margin-right: 10px;">✅</span>
+                                        <span>Pesan Anda sudah tersampaikan!</span>
+                                    </div>
+                                @endif
+
+                                @if($errors->any())
+                                    <div id="alert-notif-error" class="fade-out" style="background: rgba(237, 30, 121, 0.15); border: 1px solid #ed1e79; border-radius: 12px; color: #f472b6; padding: 15px; margin-bottom: 25px; backdrop-filter: blur(10px);">
+                                        <ul style="margin: 0; padding-left: 15px; font-size: 0.85rem;">
+                                            @foreach($errors->all() as $error)
+                                                <li>{{ $error }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
                                 
-                                <form>
+                                <form action="{{ route('contact.store') }}" method="POST">
+                                    @csrf
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <input type="text" class="form-control-custom" placeholder="Your Name">
+                                            <input type="text" name="name" class="form-control-custom" placeholder="Your Name" value="{{ old('name') }}" required>
                                         </div>
                                         <div class="col-md-6">
-                                            <input type="email" class="form-control-custom" placeholder="Your Email">
+                                            <input type="email" name="email" class="form-control-custom" placeholder="Your Email" value="{{ old('email') }}" required>
                                         </div>
                                     </div>
                                     
-                                    <input type="text" class="form-control-custom" placeholder="Subject">
+                                    <input type="text" name="subject" class="form-control-custom" placeholder="Subject" value="{{ old('subject') }}" required>
                                     
-                                    <textarea class="form-control-custom" rows="4" placeholder="Write your message here..."></textarea>
+                                    <textarea name="message" class="form-control-custom" rows="4" placeholder="Write your message here..." required>{{ old('message') }}</textarea>
                                     
                                     <button type="submit" class="btn btn-send">
                                         Send Message
@@ -188,12 +200,31 @@
                                 </form>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
 </div>
+
+<script>
+    // Script untuk menghilangkan notifikasi otomatis setelah 3 detik
+    document.addEventListener('DOMContentLoaded', function() {
+        const alerts = [
+            document.getElementById('alert-notif'),
+            document.getElementById('alert-notif-error')
+        ];
+
+        alerts.forEach(alert => {
+            if (alert) {
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    setTimeout(() => {
+                        alert.style.display = 'none';
+                    }, 500); // Waktu transisi fade out
+                }, 3000); // Muncul selama 3 detik
+            }
+        });
+    });
+</script>
 @endsection

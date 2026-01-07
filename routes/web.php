@@ -6,6 +6,7 @@ use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminFrameController;
+use App\Http\Controllers\ContactController;
 
 
 // landing
@@ -65,3 +66,5 @@ Route::get('/about', function () {
 Route::get('/contact', function () {
     return view('contact');
 });
+
+Route::post('/contact-send', [ContactController::class, 'store'])->name('contact.store');

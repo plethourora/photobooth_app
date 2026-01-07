@@ -115,12 +115,12 @@
                         @csrf
                         <div class="mb-3">
                             <label class="form-label text-white">Email Address</label>
-                            <input type="email" name="email" class="form-control-custom" placeholder="admin@poselab.com" required>
+                            <input type="email" name="email" class="form-control-custom" placeholder="Enter your email" required>
                         </div>
 
                         <div class="mb-4">
                             <label class="form-label text-white">Password</label>
-                            <input type="password" name="password" class="form-control-custom" placeholder="••••••••" required>
+                            <input type="password" name="password" class="form-control-custom" placeholder="Enter your password" required>
                         </div>
 
                         <div class="d-grid">
